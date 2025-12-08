@@ -1,0 +1,12 @@
+# Core
+python==3.12
+
+# Server
+mcp==1.22
+httpx==0.28.1
+
+# Client
+ollama==0.6.1
+
+# Utilities
+docker==7.1.0
