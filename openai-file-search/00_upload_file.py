@@ -62,8 +62,8 @@ def vector_store_exists(client, store_name):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Upload a file to OpenAI API")
-    ap.add_argument("--file", type=str, help="Path to the file to upload")
-    ap.add_argument("--store", type=str, help="Name of the vector store to create", default="diagonismos")
+    ap.add_argument("--file", type=str, help="Path to the file to upload", required=True)
+    ap.add_argument("--store", type=str, help="Name of the vector store to create", required=True)
 
     # Create the file
     args = ap.parse_args()
