@@ -1,10 +1,12 @@
 import asyncio
-import os
+import os, sys
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-import ollama
 from ollama import Client
 from dotenv import load_dotenv
+# Add parent directory to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from helpers import Colors
 
 # Load environment variables from .env file
 BASE = os.path.dirname(os.path.dirname(__file__)) if "__file__" in globals() else os.getcwd()
@@ -14,14 +16,6 @@ load_dotenv(dotenv_path=os.path.join(BASE, '.env'), verbose=True)
 OLLAMA_URL = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 MODEL = "llama3.2"
 client = Client(host=OLLAMA_URL)
-class Colors:
-    HEADER = '\033[95m'
-    BLUE = '\033[94m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
 
 async def run():
     # 1. Setup the server connection parameters
