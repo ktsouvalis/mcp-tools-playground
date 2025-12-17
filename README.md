@@ -1,6 +1,6 @@
-# MCP SysAdmin & OpenAI Vector Search Tools
+# MCP Local & OpenAI Tools
 
-This repository contains two distinct experimental modules for interacting with LLMs:
+This repository contains distinct experimental modules for interacting with LLMs. Until now, it includes:
 
 1.  **Local SysAdmin Dashboard (MCP + Ollama):** A local implementation using the Model Context Protocol (MCP) to connect a local Llama 3.2 model (via Ollama) to system tools like Docker and HTTP checks.
 2.  **OpenAI Vector Store (File Search):** A set of scripts to upload files, manage OpenAI Vector Stores, and perform RAG (Retrieval-Augmented Generation) using OpenAI's `file_search` tool.
@@ -12,7 +12,7 @@ This repository contains two distinct experimental modules for interacting with 
 Before running these scripts, ensure you have the following installed:
 
 * **Python 3.10+**
-* **Docker Engine** (running and accessible by the user)
+* **Docker Engine** (optional, running and accessible by the user)
 * **Ollama** (for local model interaction)
 * **OpenAI API Key**
 
