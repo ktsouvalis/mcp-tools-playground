@@ -3,9 +3,8 @@ Docstring for openai-local-shell.00_local_shell_client
 Module that provides a client interface for interacting with the OpenAI Local Shell service.
 """
 
-import os, sys
-import shlex
-import subprocess
+import os, sys, shlex, subprocess
+from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -13,101 +12,130 @@ from dotenv import load_dotenv
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from helpers import Colors
 
-# Load environment variables from .env file
+# Environment Setup
 BASE = os.path.dirname(os.path.dirname(__file__)) if "__file__" in globals() else os.getcwd()
 load_dotenv(dotenv_path=os.path.join(BASE, '.env'), verbose=True)
-api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=api_key)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# --- SYSTEM PROMPT ---
-SYSTEM_MESSAGE = {
-    "role": "user",
-    "content": [{
-        "type": "input_text",
-        "text": "You are a helpful IT and Software Development assistant. "
-                "When you execute a shell command, always provide a brief explanation of what you did. "
-                "Do not perform Git operations unless specifically asked. "
-                "Always respond with text after completing a tool call."
-    }]
-}
+# --- LOGGING UTILITY ---
 
-conversation_history = [SYSTEM_MESSAGE]
+def save_as_markdown(history):
+    """Saves the conversation as a readable Markdown file with code blocks."""
+    log_dir = os.path.join(BASE, "logs")
+    os.makedirs(log_dir, exist_ok=True)
 
-while True:
-    print(f"{Colors.GREEN}System ready. Type 'quit' to exit.{Colors.ENDC}\n")
-    user_input = input(f"{Colors.BOLD}You: {Colors.ENDC}")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filepath = os.path.join(log_dir, f"session_{timestamp}.md")
 
-    if user_input.lower() in ['quit', 'exit', 'q']:
-        sys.exit(0)
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(f"# Session Log - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+        for msg in history:
+            role = msg['role'].upper()
+            f.write(f"### {role}\n")
+            for item in msg['content']:
+                text = item.get('text', str(item))
+                # If it's shell output or action, wrap it in a code block
+                if "Command Output:" in text or "[System Action:" in text:
+                    f.write(f"```bash\n{text}\n```\n")
+                else:
+                    f.write(f"{text}\n")
+            f.write("\n---\n")
 
-    conversation_history.append({
-        "role": "user",
-        "content": [{"type": "input_text", "text": user_input}],
-    })
+    print(f"\n{Colors.BLUE}History saved to: {filepath}{Colors.ENDC}")
 
-    response = client.responses.create(
-        model="codex-mini-latest",
-        tools=[{"type": "local_shell"}],
-        input=conversation_history,
-    )
+# --- FUNCTIONAL CORE ---
 
-    while True:
-        # Filter and convert Assistant output for history storage
-        history_content = []
-        for item in response.output:
-            if item.type == "text":
-                history_content.append({"type": "output_text", "text": item.text})
-            elif item.type in ["local_shell_call", "tool_call"]:
-                args = getattr(item, "action", None) or getattr(item, "arguments", None)
-                cmd = args.get('command') if isinstance(args, dict) else getattr(args, 'command', 'unknown')
-                history_content.append({"type": "output_text", "text": f"[System Action: Executed {cmd}]"})
+def execute_shell_command(call):
+    """Handles the subprocess execution with a user confirmation step."""
+    args = getattr(call, "action", None) or getattr(call, "arguments", None)
 
-        if history_content:
-            conversation_history.append({
-                "role": "assistant",
-                "content": history_content
-            })
+    def _get(obj, key, default=None):
+        return obj.get(key, default) if isinstance(obj, dict) else getattr(obj, key, default)
 
-        # Process shell calls
-        shell_calls = [i for i in response.output if i.type in ["local_shell_call", "tool_call"]]
+    command = _get(args, "command")
+    if not command: return "No command provided."
 
-        if not shell_calls:
-            break
+    # --- CONFIRMATION STEP ---
+    print(f"\n{Colors.BOLD}{Colors.YELLOW}MODEL REQUESTS COMMAND:{Colors.ENDC} {command}")
+    confirm = input(f"Execute this command? ([y]/n): ").lower()
 
-        call = shell_calls[0]
-        args = getattr(call, "action", None) or getattr(call, "arguments", None)
+    if confirm not in ['', 'y']:
+        print(f"{Colors.RED}Command aborted by user.{Colors.ENDC}")
+        return "User refused to execute this command."
 
-        def _get(obj, key, default=None):
-            if isinstance(obj, dict): return obj.get(key, default)
-            return getattr(obj, key, default)
+    if isinstance(command, str): command = shlex.split(command)
 
-        command = _get(args, "command")
-        if not command: break
-
-        print(f"{Colors.YELLOW}Executing command:{Colors.ENDC} {command}")
-
-        if isinstance(command, str): command = shlex.split(command)
-
+    try:
         completed = subprocess.run(
             command,
             cwd=_get(args, "working_directory") or os.getcwd(),
             env={**os.environ, **(_get(args, "env") or {})},
-            capture_output=True,
-            text=True,
+            capture_output=True, text=True,
             timeout=(_get(args, "timeout_ms") / 1000) if _get(args, "timeout_ms") else None,
         )
+        return completed.stdout + completed.stderr
+    except Exception as e:
+        return f"Error executing command: {str(e)}"
 
-        tool_output_text = f"Command Output:\n{completed.stdout + completed.stderr}"
+def filter_assistant_output(response_output):
+    """Converts model output to API-safe formats for conversation history."""
+    history_items = []
+    for item in response_output:
+        if item.type == "text":
+            history_items.append({"type": "output_text", "text": item.text})
+        elif item.type in ["local_shell_call", "tool_call"]:
+            args = getattr(item, "action", None) or getattr(item, "arguments", None)
+            cmd = args.get('command') if isinstance(args, dict) else getattr(args, 'command', 'unknown')
+            history_items.append({"type": "output_text", "text": f"[System Action: Executed {cmd}]"})
+    return history_items
+
+# --- MAIN LOOP ---
+
+def main():
+    # Initial instruction set
+    conversation_history = [{
+        "role": "user",
+        "content": [{"type": "input_text", "text": "Helpful IT assistant. Always explain your shell actions."}]
+    }]
+
+    while True:
+        print(f"{Colors.GREEN}System ready. Type 'quit' to exit.{Colors.ENDC}")
+        user_input = input(f"{Colors.BOLD}You: {Colors.ENDC}")
+
+        if user_input.lower() in ['quit', 'exit', 'q']:
+            save_as_markdown(conversation_history)
+            sys.exit(0)
+
         conversation_history.append({
             "role": "user",
-            "content": [{"type": "input_text", "text": tool_output_text}],
+            "content": [{"type": "input_text", "text": user_input}],
         })
 
-        response = client.responses.create(
-            model="codex-mini-latest",
-            tools=[{"type": "local_shell"}],
-            input=conversation_history,
-        )
+        while True:
+            response = client.responses.create(
+                model="codex-mini-latest",
+                tools=[{"type": "local_shell"}],
+                input=conversation_history,
+            )
 
-    final_text = response.output_text if response.output_text else "(Command finished successfully)"
-    print(f"\n{Colors.GREEN}Model:{Colors.ENDC} {final_text}\n")
+            # Store assistant thought/text
+            assistant_items = filter_assistant_output(response.output)
+            if assistant_items:
+                conversation_history.append({"role": "assistant", "content": assistant_items})
+
+            # Check for shell execution
+            shell_calls = [i for i in response.output if i.type in ["local_shell_call", "tool_call"]]
+            if not shell_calls:
+                # Print final model text and break inner loop
+                print(f"\n{Colors.GREEN}Model:{Colors.ENDC} {response.output_text or '(Done)'}\n")
+                break
+
+            # Handle execution and return output to history
+            result = execute_shell_command(shell_calls[0])
+            conversation_history.append({
+                "role": "user",
+                "content": [{"type": "input_text", "text": f"Command Output:\n{result}"}],
+            })
+
+if __name__ == "__main__":
+    main()
