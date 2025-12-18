@@ -62,7 +62,7 @@ OPENAI_VECTOR_STORE_ID=
 python local-tools/client.py
 ```
 
-See: `local-tools/README.md`
+See: [local-tools/README.md](local-tools/README.md)
 
 ### 2) openai-file-search (Vector Store + file_search)
 
@@ -72,7 +72,7 @@ python openai-file-search/01_check_files.py
 python openai-file-search/10_file_search_client.py
 ```
 
-See: `openai-file-search/README.md`
+See: [openai-file-search/README.md](openai-file-search/README.md)
 
 ### 3) openai-local-shell (local_shell tool)
 
@@ -80,4 +80,4 @@ See: `openai-file-search/README.md`
 python openai-local-shell/00_local_shell_client.py
 ```
 
-See: `openai-local-shell/README.md`
+See: [openai-local-shell/README.md](openai-local-shell/README.md)
