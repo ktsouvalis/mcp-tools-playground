@@ -1,120 +1,83 @@
-# MCP Local & OpenAI Tools
+# MCP Tools (Local + OpenAI)
 
-This repository contains distinct experimental modules for interacting with LLMs. Until now, it includes:
+This repo contains three small, self-contained “sub-projects” for experimenting with tool-using LLMs:
 
-1.  **Local SysAdmin Dashboard (MCP + Ollama):** A local implementation using the Model Context Protocol (MCP) to connect a local Llama 3.2 model (via Ollama) to system tools like Docker and HTTP checks.
-2.  **OpenAI Vector Store (File Search):** A set of scripts to upload files, manage OpenAI Vector Stores, and perform RAG (Retrieval-Augmented Generation) using OpenAI's `file_search` tool.
+1. **local-tools/**: MCP server + client wired to **Ollama** (`llama3.2`) and a couple of real tools (HTTP status + Docker).
+2. **openai-file-search/**: OpenAI **Vector Stores** + `file_search` tool (upload → index → chat).
+3. **openai-local-shell/**: OpenAI `local_shell` tool demo (model proposes shell commands, user confirms, output is fed back).
 
----
-
-## 📋 Prerequisites
-
-Before running these scripts, ensure you have the following installed:
-
-* **Python 3.10+**
-* **Docker Engine** (optional, running and accessible by the user)
-* **Ollama** (for local model interaction)
-* **OpenAI API Key**
+Each subdirectory has its own README with the detailed workflow and examples.
 
 ---
 
-## 🛠️ Installation & Setup
+## Prerequisites
 
-### 1. Directory Structure
-The `client.py` script expects a specific folder structure for the MCP server. Ensure your project looks like this:
+- **Conda** (Miniconda/Anaconda)
+- **Python 3.12** (installed via conda env below)
+- **OpenAI API Key** (for the OpenAI modules)
+- **Ollama** (for `local-tools/`)
+- **Docker Engine** (optional, only needed for the Docker tools in `local-tools/`)
 
-```text
-project_root/
-├── README.md
-├── .env.example            # Template for environment variables
-├── requirements.txt
-├── helpers.py
-├── .gitignore
-└── local-tools/
-    └── server.py
-    └── client.py
-└── openai-file-search/
-    └── 00_upload_file.py
-    └── 01_check_files.py
-    └── 10_client.py
-```
+---
 
-### 2. Environment Variables
-Create a `.env` file in the root directory (using `.env.example` as a template):
+## Setup
 
-```ini
-OPENAI_API_KEY=your_openai_api_key_here
-OLLAMA_HOST=http://localhost:11434
-# The ID below will be generated automatically by 00_upload_file.py
-# Paste it here after running that script or paste it in case you use a pre-existing vector store
-OPENAI_VECTOR_STORE_ID=
-```
-
-### 3. Install Dependencies
-Install the requirements (virtual environment recommended, i use conda):
+### 1) Create a virtual environment (Python 3.12). I prefer conda:
 
 ```bash
-conda create -n mcp python=3.14.2 -y
-conda activate mcp
-# Install packages
+conda create -n mcp-tools python=3.12 -y
+conda activate mcp-tools
+```
+
+### 2) Install Python dependencies
+
+From the repo root:
+
+```bash
 pip install -r requirements.txt
 ```
 
----
+### 3) Configure environment variables
 
-## 🚀 Module 1: Local SysAdmin Dashboard (MCP)
+Create a `.env` file in the repo root:
 
-This module connects a local Llama 3.2 model to your system's tools using the Model Context Protocol.
+```ini
+# Required for OpenAI modules
+OPENAI_API_KEY=your_openai_api_key_here
 
-### 1. Prepare Ollama
-Ensure Ollama is running and you have pulled the required model:
+# Used by local-tools (defaults to http://localhost:11434 if unset)
+OLLAMA_HOST=http://localhost:11434
 
-```bash
-ollama serve
-# Open a new terminal
-ollama pull llama3.2
+# Used by openai-file-search (set after you create/choose a vector store)
+OPENAI_VECTOR_STORE_ID=
 ```
-
-### 2. Run the Client
-This script starts the MCP server (subprocess) and the interactive client.
-
-```bash
-python client.py
-```
-
-### 3. Usage Examples
-Once the system says `System ready`, you can ask questions like:
-* "Check if upatras.gr is down."
-* "List my running docker containers."
-* "Show me the logs for the container named 'redis'."
 
 ---
 
-## 📂 Module 2: OpenAI Vector Search
+## Quick Start
 
-This module uses OpenAI's Assistants API `file_search` tool (RAG).
-
-### Step 1: Upload File & Create Vector Store
-Run this script to upload a file. It will create a vector store or it will use an existing one and link the file.
+### 1) local-tools (MCP + Ollama)
 
 ```bash
-python 00_upload_file.py --file path/to/your/document.pdf --store your_vector_store_name
+python local-tools/client.py
 ```
-* **Output:** It will print a **Vector Store ID**.
-* **Action:** Copy this ID and paste it into your `.env` file as `OPENAI_VECTOR_STORE_ID`.
-OR
-* If you already have a vector store, just paste its ID into the `.env` file.
 
-### Step 2: Check Processing Status
-Verify that the file has been successfully processed and indexed by OpenAI.
+See: `local-tools/README.md`
+
+### 2) openai-file-search (Vector Store + file_search)
 
 ```bash
-python 01_check_files.py
+python openai-file-search/00_upload_file.py --file path/to/doc.pdf --store my_store
+python openai-file-search/01_check_files.py
+python openai-file-search/10_file_search_client.py
 ```
 
-### Step 3: Chat with your Data
-Start the chat client. It uses the model defined in the script (e.g., `gpt-5-nano` or `gpt-4o`) to answer questions based on the uploaded file.
+See: `openai-file-search/README.md`
+
+### 3) openai-local-shell (local_shell tool)
 
 ```bash
-python 10_client.py
+python openai-local-shell/00_local_shell_client.py
 ```
+
+See: `openai-local-shell/README.md`
