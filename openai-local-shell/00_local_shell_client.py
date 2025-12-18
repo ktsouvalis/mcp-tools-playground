@@ -20,9 +20,8 @@ api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
 # --- SYSTEM PROMPT ---
-# This ensures the model always communicates and behaves as a helpful assistant.
 SYSTEM_MESSAGE = {
-    "role": "user", # In this specific API, system-level instructions often go in a 'user' or 'developer' block
+    "role": "user",
     "content": [{
         "type": "input_text",
         "text": "You are a helpful IT and Software Development assistant. "
@@ -32,7 +31,6 @@ SYSTEM_MESSAGE = {
     }]
 }
 
-# Initialize the conversation history with the system instructions
 conversation_history = [SYSTEM_MESSAGE]
 
 while True:
@@ -42,13 +40,11 @@ while True:
     if user_input.lower() in ['quit', 'exit', 'q']:
         sys.exit(0)
 
-    # 1) Add the user's message to history
     conversation_history.append({
         "role": "user",
         "content": [{"type": "input_text", "text": user_input}],
     })
 
-    # 2) Initial response request
     response = client.responses.create(
         model="codex-mini-latest",
         tools=[{"type": "local_shell"}],
@@ -56,7 +52,7 @@ while True:
     )
 
     while True:
-        # 3) Filter and convert Assistant output for history storage
+        # Filter and convert Assistant output for history storage
         history_content = []
         for item in response.output:
             if item.type == "text":
@@ -72,7 +68,7 @@ while True:
                 "content": history_content
             })
 
-        # 4) Process shell calls
+        # Process shell calls
         shell_calls = [i for i in response.output if i.type in ["local_shell_call", "tool_call"]]
 
         if not shell_calls:
@@ -88,7 +84,6 @@ while True:
         command = _get(args, "command")
         if not command: break
 
-        # UI Feedback: Show what is happening on your system
         print(f"{Colors.YELLOW}Executing command:{Colors.ENDC} {command}")
 
         if isinstance(command, str): command = shlex.split(command)
@@ -102,20 +97,17 @@ while True:
             timeout=(_get(args, "timeout_ms") / 1000) if _get(args, "timeout_ms") else None,
         )
 
-        # 5) Send tool output back as 'input_text'
         tool_output_text = f"Command Output:\n{completed.stdout + completed.stderr}"
         conversation_history.append({
             "role": "user",
             "content": [{"type": "input_text", "text": tool_output_text}],
         })
 
-        # 6) Get the model's reaction
         response = client.responses.create(
             model="codex-mini-latest",
             tools=[{"type": "local_shell"}],
             input=conversation_history,
         )
 
-    # Print the assistant's final answer (with fallback)
     final_text = response.output_text if response.output_text else "(Command finished successfully)"
     print(f"\n{Colors.GREEN}Model:{Colors.ENDC} {final_text}\n")
