@@ -43,6 +43,19 @@ def save_as_markdown(history):
 
     print(f"\n{Colors.BLUE}History saved to: {filepath}{Colors.ENDC}")
 
+def save_as_json(history):
+    """Saves the conversation history as a JSON file."""
+    import json
+    log_dir = os.path.join(BASE, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filepath = os.path.join(log_dir, f"session_{timestamp}.json")
+
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(history, f, indent=4)
+
+    print(f"\n{Colors.BLUE}History saved to: {filepath}{Colors.ENDC}")
 # --- FUNCTIONAL CORE ---
 
 def execute_shell_command(call):
@@ -104,6 +117,7 @@ def main():
 
         if user_input.lower() in ['quit', 'exit', 'q']:
             save_as_markdown(conversation_history)
+            save_as_json(conversation_history)
             sys.exit(0)
 
         conversation_history.append({
@@ -132,6 +146,7 @@ def main():
 
             # Handle execution and return output to history
             result = execute_shell_command(shell_calls[0])
+            print(f"\n{Colors.CYAN}Command Output:{Colors.ENDC}\n{result}\n")
             conversation_history.append({
                 "role": "user",
                 "content": [{"type": "input_text", "text": f"Command Output:\n{result}"}],
