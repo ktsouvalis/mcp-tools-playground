@@ -14,7 +14,7 @@ load_dotenv(dotenv_path=os.path.join(BASE, '.env'), verbose=True)
 
 # Configuration
 OLLAMA_URL = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-MODEL = "llama3.2"
+MODEL = "qwen2.5:14b"
 client = Client(host=OLLAMA_URL)
 
 async def run():
