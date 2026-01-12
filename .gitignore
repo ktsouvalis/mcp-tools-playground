@@ -6,3 +6,5 @@ __pycache__/
 logs/**
 !logs/.gitkeep
 .agent_history
+/build/
+/dist/
